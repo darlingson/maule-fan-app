@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:maule_fan_app/presentation/screens/home_screen.dart';
+import 'package:maule_fan_app/presentation/screens/profile_screen.dart';
+import 'package:maule_fan_app/presentation/screens/team_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() => runApp(MyApp());
 
 class MyApp extends StatelessWidget {
-  static final _primaryRed = Color(0xFFDA1A32); // Big Bullets Red
+  static final _primaryRed = Color(0xFFDA1A32);
   static final _secondaryWhite = Colors.white;
+
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -27,7 +32,10 @@ class MyApp extends StatelessWidget {
     );
   }
 }
+
 class SplashRouter extends StatefulWidget {
+  const SplashRouter({super.key});
+
   @override
   _SplashRouterState createState() => _SplashRouterState();
 }
@@ -54,13 +62,17 @@ class _SplashRouterState extends State<SplashRouter> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) return Scaffold(body: Center(child: CircularProgressIndicator()));
+    if (_loading) {
+      return Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
     return _seenOnboarding ? MainScreen() : OnboardingScreen();
   }
 }
 
 class OnboardingScreen extends StatelessWidget {
   final PageController _controller = PageController();
+
+  OnboardingScreen({super.key});
 
   void _completeOnboarding(BuildContext context) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -77,8 +89,12 @@ class OnboardingScreen extends StatelessWidget {
       body: PageView(
         controller: _controller,
         children: [
-          _buildPage(context, "Welcome", "To the official Nyasa Big Bullets app."),
-          _buildPage(context, "Live Updates", "Stay informed with latest match news."),
+          _buildPage(context, "Welcome", "To the Maule Fan app."),
+          _buildPage(
+            context,
+            "Live Updates",
+            "Stay informed with latest match news.",
+          ),
           _buildPage(
             context,
             "Let’s Go",
@@ -91,8 +107,13 @@ class OnboardingScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildPage(BuildContext context, String title, String desc,
-      {bool isLast = false, VoidCallback? onDone}) {
+  Widget _buildPage(
+    BuildContext context,
+    String title,
+    String desc, {
+    bool isLast = false,
+    VoidCallback? onDone,
+  }) {
     return Container(
       color: Colors.white,
       padding: const EdgeInsets.all(32),
@@ -101,9 +122,20 @@ class OnboardingScreen extends StatelessWidget {
         children: [
           Icon(Icons.sports_soccer, size: 100, color: Colors.red),
           SizedBox(height: 40),
-          Text(title, style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.red)),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              color: Colors.red,
+            ),
+          ),
           SizedBox(height: 20),
-          Text(desc, textAlign: TextAlign.center, style: TextStyle(fontSize: 16)),
+          Text(
+            desc,
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 16),
+          ),
           SizedBox(height: 60),
           if (isLast)
             ElevatedButton(
@@ -116,7 +148,10 @@ class OnboardingScreen extends StatelessWidget {
     );
   }
 }
+
 class MainScreen extends StatefulWidget {
+  const MainScreen({super.key});
+
   @override
   _MainScreenState createState() => _MainScreenState();
 }
@@ -124,11 +159,7 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
 
-  final List<Widget> _pages = [
-    HomeScreen(),
-    NewsScreen(),
-    ProfileScreen(),
-  ];
+  final List<Widget> _pages = [HomeScreen(), TeamScreen(), ProfileScreen()];
 
   void _onItemTapped(int index) {
     setState(() => _selectedIndex = index);
@@ -149,27 +180,5 @@ class _MainScreenState extends State<MainScreen> {
         ],
       ),
     );
-  }
-}
-
-// Sample Screens
-class HomeScreen extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Center(child: Text("🏠 Home", style: TextStyle(fontSize: 24)));
-  }
-}
-
-class NewsScreen extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Center(child: Text("📰 News", style: TextStyle(fontSize: 24)));
-  }
-}
-
-class ProfileScreen extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Center(child: Text("👤 Profile", style: TextStyle(fontSize: 24)));
   }
 }
