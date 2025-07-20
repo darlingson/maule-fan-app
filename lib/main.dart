@@ -1,20 +1,175 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-void main() {
-  runApp(const MainApp());
-}
+void main() => runApp(MyApp());
 
-class MainApp extends StatelessWidget {
-  const MainApp({super.key});
+class MyApp extends StatelessWidget {
+  static final _primaryRed = Color(0xFFDA1A32); // Big Bullets Red
+  static final _secondaryWhite = Colors.white;
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-      home: Scaffold(
-        body: Center(
-          child: Text('Hello World!'),
+    return MaterialApp(
+      title: 'Maule Fan App',
+      theme: ThemeData(
+        primaryColor: _primaryRed,
+        scaffoldBackgroundColor: _secondaryWhite,
+        appBarTheme: AppBarTheme(
+          backgroundColor: _primaryRed,
+          foregroundColor: _secondaryWhite,
+        ),
+        bottomNavigationBarTheme: BottomNavigationBarThemeData(
+          selectedItemColor: _primaryRed,
+          unselectedItemColor: Colors.grey,
         ),
       ),
+      home: SplashRouter(),
     );
+  }
+}
+class SplashRouter extends StatefulWidget {
+  @override
+  _SplashRouterState createState() => _SplashRouterState();
+}
+
+class _SplashRouterState extends State<SplashRouter> {
+  bool _loading = true;
+  bool _seenOnboarding = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkOnboardingSeen();
+  }
+
+  void _checkOnboardingSeen() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    bool seen = prefs.getBool('seen_onboarding') ?? false;
+    seen = false;
+    setState(() {
+      _seenOnboarding = seen;
+      _loading = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) return Scaffold(body: Center(child: CircularProgressIndicator()));
+    return _seenOnboarding ? MainScreen() : OnboardingScreen();
+  }
+}
+
+class OnboardingScreen extends StatelessWidget {
+  final PageController _controller = PageController();
+
+  void _completeOnboarding(BuildContext context) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('seen_onboarding', true);
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => MainScreen()),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: PageView(
+        controller: _controller,
+        children: [
+          _buildPage(context, "Welcome", "To the official Nyasa Big Bullets app."),
+          _buildPage(context, "Live Updates", "Stay informed with latest match news."),
+          _buildPage(
+            context,
+            "Let’s Go",
+            "Enjoy everything Big Bullets in one app.",
+            isLast: true,
+            onDone: () => _completeOnboarding(context),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPage(BuildContext context, String title, String desc,
+      {bool isLast = false, VoidCallback? onDone}) {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.all(32),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.sports_soccer, size: 100, color: Colors.red),
+          SizedBox(height: 40),
+          Text(title, style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.red)),
+          SizedBox(height: 20),
+          Text(desc, textAlign: TextAlign.center, style: TextStyle(fontSize: 16)),
+          SizedBox(height: 60),
+          if (isLast)
+            ElevatedButton(
+              onPressed: onDone,
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              child: Text("Get Started", style: TextStyle(color: Colors.white)),
+            ),
+        ],
+      ),
+    );
+  }
+}
+class MainScreen extends StatefulWidget {
+  @override
+  _MainScreenState createState() => _MainScreenState();
+}
+
+class _MainScreenState extends State<MainScreen> {
+  int _selectedIndex = 0;
+
+  final List<Widget> _pages = [
+    HomeScreen(),
+    NewsScreen(),
+    ProfileScreen(),
+  ];
+
+  void _onItemTapped(int index) {
+    setState(() => _selectedIndex = index);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text("Nyasa Big Bullets")),
+      body: _pages[_selectedIndex],
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _selectedIndex,
+        onTap: _onItemTapped,
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+          BottomNavigationBarItem(icon: Icon(Icons.newspaper), label: 'News'),
+          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
+        ],
+      ),
+    );
+  }
+}
+
+// Sample Screens
+class HomeScreen extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Center(child: Text("🏠 Home", style: TextStyle(fontSize: 24)));
+  }
+}
+
+class NewsScreen extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Center(child: Text("📰 News", style: TextStyle(fontSize: 24)));
+  }
+}
+
+class ProfileScreen extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Center(child: Text("👤 Profile", style: TextStyle(fontSize: 24)));
   }
 }
