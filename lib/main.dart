@@ -160,24 +160,95 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
   final List<Widget> _pages = [HomeScreen(), MatchesScreen(), PlayersScreen()];
+  final List<String> _titles = ['Home', 'Matches', 'Players'];
 
   void _onItemTapped(int index) {
     setState(() => _selectedIndex = index);
   }
 
+  void _navigateToUserProfile(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => UserProfileScreen()),
+    );
+  }
+
+  void _navigateToTeamProfile(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => TeamProfileScreen()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Maule Fan App")),
+      appBar: AppBar(
+        title: Text(_titles[_selectedIndex]),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.account_circle),
+            onPressed: () => _navigateToUserProfile(context),
+          ),
+          IconButton(
+            icon: const Icon(Icons.sports_soccer),
+            onPressed: () => _navigateToTeamProfile(context),
+          ),
+        ],
+      ),
       body: _pages[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.people), label: 'Matches'),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Players'),
+          BottomNavigationBarItem(icon: Icon(Icons.sports_soccer), label: 'Matches'),
+          BottomNavigationBarItem(icon: Icon(Icons.people), label: 'Players'),
         ],
+      ),
+    );
+  }
+}
+
+class UserProfileScreen extends StatelessWidget {
+  const UserProfileScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        title: const Text('User Profile'),
+        backgroundColor: const Color(0xFFDA1A32),
+        foregroundColor: Colors.white,
+      ),
+      body: const Center(
+        child: Text(
+          'Basic User App Config',
+          style: TextStyle(color: Colors.white, fontSize: 24),
+        ),
+      ),
+    );
+  }
+}
+
+class TeamProfileScreen extends StatelessWidget {
+  const TeamProfileScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        title: const Text('Team Profile'),
+        backgroundColor: const Color(0xFFDA1A32),
+        foregroundColor: Colors.white,
+      ),
+      body: const Center(
+        child: Text(
+          'Team History & Achievements',
+          style: TextStyle(color: Colors.white, fontSize: 24),
+        ),
       ),
     );
   }
