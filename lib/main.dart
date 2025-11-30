@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:maule_fan_app/presentation/screens/home_screen.dart';
 import 'package:maule_fan_app/presentation/screens/matches_screen.dart';
 import 'package:maule_fan_app/presentation/screens/players_screen.dart';
+import 'package:maule_fan_app/presentation/screens/team_profile_screen.dart';
+import 'package:maule_fan_app/presentation/screens/user_profile_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() => runApp(MyApp());
@@ -205,50 +207,6 @@ class _MainScreenState extends State<MainScreen> {
           BottomNavigationBarItem(icon: Icon(Icons.sports_soccer), label: 'Matches'),
           BottomNavigationBarItem(icon: Icon(Icons.people), label: 'Players'),
         ],
-      ),
-    );
-  }
-}
-
-class UserProfileScreen extends StatelessWidget {
-  const UserProfileScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        title: const Text('User Profile'),
-        backgroundColor: const Color(0xFFDA1A32),
-        foregroundColor: Colors.white,
-      ),
-      body: const Center(
-        child: Text(
-          'Basic User App Config',
-          style: TextStyle(color: Colors.white, fontSize: 24),
-        ),
-      ),
-    );
-  }
-}
-
-class TeamProfileScreen extends StatelessWidget {
-  const TeamProfileScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        title: const Text('Team Profile'),
-        backgroundColor: const Color(0xFFDA1A32),
-        foregroundColor: Colors.white,
-      ),
-      body: const Center(
-        child: Text(
-          'Team History & Achievements',
-          style: TextStyle(color: Colors.white, fontSize: 24),
-        ),
       ),
     );
   }
