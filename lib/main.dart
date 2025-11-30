@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:maule_fan_app/presentation/screens/home_screen.dart';
+import 'package:maule_fan_app/presentation/screens/matches_screen.dart';
+import 'package:maule_fan_app/presentation/screens/players_screen.dart';
 import 'package:maule_fan_app/presentation/screens/profile_screen.dart';
 import 'package:maule_fan_app/presentation/screens/team_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -159,7 +161,7 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
 
-  final List<Widget> _pages = [HomeScreen(), TeamScreen(), ProfileScreen()];
+  final List<Widget> _pages = [HomeScreen(), MatchesScreen(), PlayersScreen()];
 
   void _onItemTapped(int index) {
     setState(() => _selectedIndex = index);
@@ -175,8 +177,8 @@ class _MainScreenState extends State<MainScreen> {
         onTap: _onItemTapped,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.people), label: 'Team'),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
+          BottomNavigationBarItem(icon: Icon(Icons.people), label: 'Matches'),
+          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Players'),
         ],
       ),
     );
