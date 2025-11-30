@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:maule_fan_app/presentation/screens/home_screen.dart';
 import 'package:maule_fan_app/presentation/screens/matches_screen.dart';
 import 'package:maule_fan_app/presentation/screens/players_screen.dart';
-import 'package:maule_fan_app/presentation/screens/profile_screen.dart';
-import 'package:maule_fan_app/presentation/screens/team_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() => runApp(MyApp());
@@ -17,6 +15,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       title: 'Maule Fan App',
       theme: ThemeData(
         primaryColor: _primaryRed,
@@ -55,7 +54,7 @@ class _SplashRouterState extends State<SplashRouter> {
   void _checkOnboardingSeen() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     bool seen = prefs.getBool('seen_onboarding') ?? false;
-    seen = false;
+    // Removed hardcoded override to allow persistence
     setState(() {
       _seenOnboarding = seen;
       _loading = false;
@@ -160,7 +159,6 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
-
   final List<Widget> _pages = [HomeScreen(), MatchesScreen(), PlayersScreen()];
 
   void _onItemTapped(int index) {
