@@ -161,7 +161,7 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
-  final List<Widget> _pages = [HomeScreen(), MatchesScreen(), PlayersScreen()];
+  final List<Widget> _pages = [HomeScreen(), MatchesScreen(teamId: 1), PlayersScreen()];
   final List<String> _titles = ['Home', 'Matches', 'Players'];
 
   void _onItemTapped(int index) {

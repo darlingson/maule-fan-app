@@ -1,129 +1,258 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
-class Event {
-  final int time;
-  final String type;
-  final String player;
-  final String team;
+class Matches {
+  final int page;
+  final int limit;
+  final List<Datum> data;
 
-  const Event({
-    required this.time,
-    required this.type,
-    required this.player,
-    required this.team,
+  Matches({
+    required this.page,
+    required this.limit,
+    required this.data,
   });
+
+  factory Matches.fromJson(Map<String, dynamic> json) => Matches(
+    page: json["page"],
+    limit: json["limit"],
+    data: List<Datum>.from(json["data"].map((x) => Datum.fromJson(x))),
+  );
 }
 
-class Match {
-  final String home;
-  final String away;
-  final String date;
-  final String? score;
-  final String league;
-  final String? highlight;
-  final bool isUpcoming;
-  final List<Event> events;
+class Datum {
+  final int id;
+  final DateTime date;
+  final dynamic venue;
+  final String status;
+  final Score score;
+  final Competition competition;
+  final Team homeTeam;
+  final Team awayTeam;
+  final Events events;
 
-  const Match({
+  Datum({
+    required this.id,
+    required this.date,
+    required this.venue,
+    required this.status,
+    required this.score,
+    required this.competition,
+    required this.homeTeam,
+    required this.awayTeam,
+    required this.events,
+  });
+
+  factory Datum.fromJson(Map<String, dynamic> json) => Datum(
+    id: json["id"],
+    date: DateTime.parse(json["date"]),
+    venue: json["venue"],
+    status: json["status"],
+    score: Score.fromJson(json["score"]),
+    competition: Competition.fromJson(json["competition"]),
+    homeTeam: Team.fromJson(json["home_team"]),
+    awayTeam: Team.fromJson(json["away_team"]),
+    events: Events.fromJson(json["events"]),
+  );
+}
+
+class Team {
+  final String shortName;
+  final dynamic logoUrl;
+
+  Team({
+    required this.shortName,
+    required this.logoUrl,
+  });
+
+  factory Team.fromJson(Map<String, dynamic> json) => Team(
+    shortName: json["short_name"],
+    logoUrl: json["logo_url"],
+  );
+}
+
+class Competition {
+  final String name;
+  final String season;
+
+  Competition({
+    required this.name,
+    required this.season,
+  });
+
+  factory Competition.fromJson(Map<String, dynamic> json) => Competition(
+    name: json["name"],
+    season: json["season"],
+  );
+}
+
+class Events {
+  final List<Goal> goals;
+  final List<dynamic> redCards;
+
+  Events({
+    required this.goals,
+    required this.redCards,
+  });
+
+  factory Events.fromJson(Map<String, dynamic> json) => Events(
+    goals: List<Goal>.from(json["goals"].map((x) => Goal.fromJson(x))),
+    redCards: List<dynamic>.from(json["red_cards"].map((x) => x)),
+  );
+}
+
+class Goal {
+  final int playerId;
+  final int minute;
+  final dynamic assistingPlayerId;
+
+  Goal({
+    required this.playerId,
+    required this.minute,
+    required this.assistingPlayerId,
+  });
+
+  factory Goal.fromJson(Map<String, dynamic> json) => Goal(
+    playerId: json["player_id"],
+    minute: json["minute"],
+    assistingPlayerId: json["assisting_player_id"],
+  );
+}
+
+class Score {
+  final int home;
+  final int away;
+
+  Score({
     required this.home,
     required this.away,
-    required this.date,
-    this.score,
-    required this.league,
-    this.highlight,
-    required this.isUpcoming,
-    this.events = const [],
   });
+
+  factory Score.fromJson(Map<String, dynamic> json) => Score(
+    home: json["home"],
+    away: json["away"],
+  );
 }
 
-class MatchesScreen extends StatelessWidget {
-  const MatchesScreen({super.key});
+class MatchesScreen extends StatefulWidget {
+  final int teamId;
+
+  const MatchesScreen({super.key, required this.teamId});
+
+  @override
+  State<MatchesScreen> createState() => _MatchesScreenState();
+}
+
+class _MatchesScreenState extends State<MatchesScreen> {
+  Matches? matchesData;
+  bool isLoading = true;
+  String? error;
+  int currentPage = 1;
+  final int limit = 10;
+
+  @override
+  void initState() {
+    super.initState();
+    fetchMatches();
+  }
+
+  Future<void> fetchMatches() async {
+    try {
+      final response = await http.get(
+        Uri.parse('https://maule-fan-app-server.vercel.app/api/teams/${widget.teamId}/matches/events?page=$currentPage&limit=$limit'),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        setState(() {
+          matchesData = Matches.fromJson(data);
+          isLoading = false;
+        });
+      } else {
+        setState(() {
+          error = 'Failed to load matches';
+          isLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        error = 'Error: $e';
+        isLoading = false;
+      });
+    }
+  }
+
+  String formatDate(DateTime date) {
+    return '${date.day}/${date.month}/${date.year}';
+  }
+
+  String getHighlight(Datum match) {
+    if (match.events.goals.isNotEmpty) {
+      final latestGoal = match.events.goals.reduce((a, b) => a.minute > b.minute ? a : b);
+      return "${latestGoal.minute}' Goal";
+    } else if (match.events.redCards.isNotEmpty) {
+      final latestRedCard = match.events.redCards.first;
+      return "${latestRedCard['minute']}' Red Card";
+    }
+    return '';
+  }
+
+  Color getHighlightColor(Datum match) {
+    if (match.events.goals.isNotEmpty) return Colors.green;
+    if (match.events.redCards.isNotEmpty) return Colors.red;
+    return Colors.white70;
+  }
+
+  IconData getHighlightIcon(Datum match) {
+    if (match.events.goals.isNotEmpty) return Icons.sports_soccer;
+    if (match.events.redCards.isNotEmpty) return Icons.dangerous;
+    return Icons.circle;
+  }
+
+  bool isUpcoming(Datum match) {
+    return match.status == 'UPCOMING';
+  }
+
+  void loadNextPage() {
+    setState(() {
+      currentPage++;
+      isLoading = true;
+      fetchMatches();
+    });
+  }
+
+  void loadPreviousPage() {
+    if (currentPage > 1) {
+      setState(() {
+        currentPage--;
+        isLoading = true;
+        fetchMatches();
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final List<Match> matches = [
-      // Recent matches with events
-      const Match(
-        home: 'KAM',
-        away: 'BUL',
-        date: 'Nov 27, 2025',
-        score: '0 - 2',
-        league: 'TNM Super League',
-        highlight: "88' Goal (BUL)",
-        isUpcoming: false,
-        events: [
-          Event(time: 88, type: 'GOAL', player: 'Chawanangwa Gomezgani', team: 'BUL'),
-          Event(time: 75, type: 'YC', player: 'Player X', team: 'KAM'),
-          Event(time: 62, type: 'GOAL', player: 'Precious Samuel', team: 'BUL'),
-          Event(time: 45, type: 'YC', player: 'Player Y', team: 'BUL'),
-          Event(time: 30, type: 'RC', player: 'Player Z', team: 'KAM'),
-        ],
-      ),
-      const Match(
-        home: 'BUL',
-        away: 'CIV',
-        date: 'Nov 23, 2025',
-        score: '4 - 3',
-        league: 'TNM Super League',
-        highlight: "75' Red Card (CIV)",
-        isUpcoming: false,
-        events: [
-          Event(time: 89, type: 'GOAL', player: 'Henry Kabuwa', team: 'CIV'),
-          Event(time: 82, type: 'YC', player: 'Player A', team: 'BUL'),
-          Event(time: 75, type: 'RC', player: 'Player B', team: 'CIV'),
-          Event(time: 68, type: 'GOAL', player: 'Limbikani Mphepo', team: 'BUL'),
-          Event(time: 55, type: 'GOAL', player: 'Player C', team: 'CIV'),
-          Event(time: 42, type: 'GOAL', player: 'Player D', team: 'BUL'),
-          Event(time: 28, type: 'YC', player: 'Player E', team: 'CIV'),
-          Event(time: 15, type: 'GOAL', player: 'Christopher Kumwembe', team: 'BUL'),
-        ],
-      ),
-      const Match(
-        home: 'BLU',
-        away: 'BUL',
-        date: 'Nov 6, 2025',
-        score: '0 - 0',
-        league: 'TNM Super League',
-        highlight: null,
-        isUpcoming: false,
-        events: [
-          Event(time: 70, type: 'YC', player: 'Player F', team: 'BLU'),
-          Event(time: 45, type: 'YC', player: 'Player G', team: 'BUL'),
-          Event(time: 20, type: 'YC', player: 'Player H', team: 'BLU'),
-        ],
-      ),
-      // Upcoming matches
-      const Match(
-        home: 'KAR',
-        away: 'BUL',
-        date: 'Dec 17, 2025',
-        score: null,
-        league: 'TNM Super League',
-        highlight: null,
-        isUpcoming: true,
-        events: [],
-      ),
-      const Match(
-        home: 'BUL',
-        away: 'SIL',
-        date: 'Dec 28, 2025',
-        score: null,
-        league: 'TNM Super League',
-        highlight: null,
-        isUpcoming: true,
-        events: [],
-      ),
-      const Match(
-        home: 'MZU',
-        away: 'BUL',
-        date: 'Jan 4, 2026',
-        score: null,
-        league: 'TNM Super League',
-        highlight: null,
-        isUpcoming: true,
-        events: [],
-      ),
-    ];
+    if (isLoading && matchesData == null) {
+      return Scaffold(
+        backgroundColor: Colors.black,
+        body: const Center(
+          child: CircularProgressIndicator(color: Colors.white),
+        ),
+      );
+    }
+
+    if (error != null || matchesData == null) {
+      return Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(
+          child: Text(
+            error ?? 'No data available',
+            style: const TextStyle(color: Colors.white),
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -174,17 +303,20 @@ class MatchesScreen extends StatelessWidget {
           Expanded(
             child: ListView.builder(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              itemCount: matches.length,
+              itemCount: matchesData!.data.length,
               itemBuilder: (context, index) {
-                final match = matches[index];
+                final match = matchesData!.data[index];
+                final highlight = getHighlight(match);
+                
                 return InkWell(
                   onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => MatchDetailsScreen(match: match),
-                      ),
-                    );
+                    // You can navigate to match details here
+                    // Navigator.push(
+                    //   context,
+                    //   MaterialPageRoute(
+                    //     builder: (_) => MatchDetailsScreen(match: match),
+                    //   ),
+                    // );
                   },
                   child: Card(
                     color: Colors.black,
@@ -195,22 +327,22 @@ class MatchesScreen extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            '${match.date} - ${match.league}',
-                            style: TextStyle(color: Colors.white70, fontSize: 14),
+                            '${formatDate(match.date)} - ${match.competition.name}',
+                            style: const TextStyle(color: Colors.white70, fontSize: 14),
                           ),
                           const SizedBox(height: 8),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(
-                                match.home,
+                                match.homeTeam.shortName,
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 20,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
-                              if (match.isUpcoming)
+                              if (isUpcoming(match))
                                 const Text(
                                   'vs',
                                   style: TextStyle(
@@ -220,7 +352,7 @@ class MatchesScreen extends StatelessWidget {
                                 )
                               else
                                 Text(
-                                  match.score ?? '',
+                                  '${match.score.home} - ${match.score.away}',
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 20,
@@ -228,7 +360,7 @@ class MatchesScreen extends StatelessWidget {
                                   ),
                                 ),
                               Text(
-                                match.away,
+                                match.awayTeam.shortName,
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 20,
@@ -237,20 +369,20 @@ class MatchesScreen extends StatelessWidget {
                               ),
                             ],
                           ),
-                          if (match.highlight != null) ...[
+                          if (highlight.isNotEmpty) ...[
                             const SizedBox(height: 4),
                             Row(
                               children: [
-                                const Icon(
-                                  Icons.circle,
-                                  color: Colors.red,
-                                  size: 8,
+                                Icon(
+                                  getHighlightIcon(match),
+                                  color: getHighlightColor(match),
+                                  size: 12,
                                 ),
                                 const SizedBox(width: 4),
                                 Text(
-                                  match.highlight!,
-                                  style: const TextStyle(
-                                    color: Colors.red,
+                                  highlight,
+                                  style: TextStyle(
+                                    color: getHighlightColor(match),
                                     fontSize: 12,
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -266,165 +398,39 @@ class MatchesScreen extends StatelessWidget {
               },
             ),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class MatchDetailsScreen extends StatelessWidget {
-  final Match match;
-
-  const MatchDetailsScreen({super.key, required this.match});
-
-  Color _getEventColor(String type) {
-    switch (type) {
-      case 'RC':
-        return Colors.red;
-      case 'GOAL':
-        return Colors.green;
-      case 'YC':
-        return Colors.yellow;
-      default:
-        return Colors.grey;
-    }
-  }
-
-  IconData _getEventIcon(String type) {
-    switch (type) {
-      case 'RC':
-        return Icons.flag; // Red card
-      case 'GOAL':
-        return Icons.sports_soccer;
-      case 'YC':
-        return Icons.warning; // Yellow card
-      default:
-        return Icons.circle;
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final status = match.isUpcoming ? 'TBD' : 'Full Time';
-    final scoreDisplay = match.isUpcoming ? 'vs' : '${match.home} ${match.score} ${match.away}';
-    final events = match.events.reversed.toList(); // Show latest first
-
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        title: const Text(
-          'Match Details',
-          style: TextStyle(color: Colors.white),
-        ),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header
-            Text(
-              '${match.league} - ${match.date}',
-              style: const TextStyle(
-                color: Colors.white70,
-                fontSize: 14,
-              ),
-            ),
-            const SizedBox(height: 8),
-            // Score
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  scoreDisplay,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
+          // Pagination controls
+          if (matchesData != null) ...[
+            Container(
+              color: Colors.black,
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  ElevatedButton(
+                    onPressed: currentPage > 1 ? loadPreviousPage : null,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white12,
+                      disabledBackgroundColor: Colors.white12.withOpacity(0.3),
+                    ),
+                    child: const Text('Previous', style: TextStyle(color: Colors.white)),
                   ),
-                ),
-                Text(
-                  status,
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 16,
+                  Text(
+                    'Page $currentPage',
+                    style: const TextStyle(color: Colors.white),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            // Events Section
-            const Text(
-              'Match Events',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
+                  ElevatedButton(
+                    onPressed: matchesData!.data.length == limit ? loadNextPage : null,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white12,
+                      disabledBackgroundColor: Colors.white12.withOpacity(0.3),
+                    ),
+                    child: const Text('Next', style: TextStyle(color: Colors.white)),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 8),
-            Text(
-              '- $status',
-              style: TextStyle(
-                color: Colors.white70,
-                fontSize: 14,
-              ),
-            ),
-            const SizedBox(height: 16),
-            if (events.isNotEmpty)
-              ListView.separated(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: events.length,
-                separatorBuilder: (context, index) => const SizedBox(height: 4),
-                itemBuilder: (context, index) {
-                  final event = events[index];
-                  final color = _getEventColor(event.type);
-                  final icon = _getEventIcon(event.type);
-                  final description = '${event.type} - ${event.player} (${event.team})';
-                  return Row(
-                    children: [
-                      Text(
-                        '${event.time}\'',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Icon(
-                        icon,
-                        color: color,
-                        size: 16,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        description,
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  );
-                },
-              )
-            else
-              const Text(
-                'No events available yet.',
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 14,
-                ),
-              ),
           ],
-        ),
+        ],
       ),
     );
   }
