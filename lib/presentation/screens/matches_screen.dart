@@ -149,6 +149,11 @@ class _MatchesScreenState extends State<MatchesScreen> {
   String? error;
   int currentPage = 1;
   final int limit = 10;
+  
+  String? selectedSeason;
+  String? selectedCompetition;
+  List<String> availableSeasons = [];
+  List<String> availableCompetitions = [];
 
   @override
   void initState() {
@@ -158,15 +163,44 @@ class _MatchesScreenState extends State<MatchesScreen> {
 
   Future<void> fetchMatches() async {
     try {
-      final response = await http.get(
-        Uri.parse('https://maule-fan-app-server.vercel.app/api/teams/${widget.teamId}/matches/events?page=$currentPage&limit=$limit'),
-      );
+      final queryParams = {
+        'page': currentPage.toString(),
+        'limit': limit.toString(),
+      };
+      
+      if (selectedSeason != null && selectedSeason!.isNotEmpty) {
+        queryParams['season'] = selectedSeason!;
+      }
+      
+      if (selectedCompetition != null && selectedCompetition!.isNotEmpty) {
+        queryParams['competition'] = selectedCompetition!;
+      }
+
+      final uri = Uri.parse('https://maule-fan-app-server.vercel.app/api/teams/${widget.teamId}/matches/events')
+          .replace(queryParameters: queryParams);
+
+      final response = await http.get(uri);
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
+        final newMatchesData = Matches.fromJson(data);
+        
+        // Update available filters based on returned data
+        final seasons = newMatchesData.data.map((match) => match.competition.season).toSet().toList();
+        final competitions = newMatchesData.data.map((match) => match.competition.name).toSet().toList();
+        
         setState(() {
-          matchesData = Matches.fromJson(data);
+          matchesData = newMatchesData;
           isLoading = false;
+          availableSeasons = seasons;
+          availableCompetitions = competitions;
+          
+          if (selectedSeason == null && seasons.isNotEmpty) {
+            selectedSeason = seasons.first;
+          }
+          if (selectedCompetition == null && competitions.isNotEmpty) {
+            selectedCompetition = competitions.first;
+          }
         });
       } else {
         setState(() {
@@ -186,27 +220,48 @@ class _MatchesScreenState extends State<MatchesScreen> {
     return '${date.day}/${date.month}/${date.year}';
   }
 
-  String getHighlight(Datum match) {
-    if (match.events.goals.isNotEmpty) {
-      final latestGoal = match.events.goals.reduce((a, b) => a.minute > b.minute ? a : b);
-      return "${latestGoal.minute}' Goal";
-    } else if (match.events.redCards.isNotEmpty) {
-      final latestRedCard = match.events.redCards.first;
-      return "${latestRedCard['minute']}' Red Card";
+  List<Widget> buildAllEvents(Datum match) {
+    List<Widget> eventWidgets = [];
+    
+    for (final goal in match.events.goals) {
+      eventWidgets.add(
+        Padding(
+          padding: const EdgeInsets.only(right: 8.0),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.sports_soccer, color: Colors.green, size: 12),
+              const SizedBox(width: 2),
+              Text(
+                "${goal.minute}' Goal",
+                style: const TextStyle(color: Colors.green, fontSize: 11, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+        ),
+      );
     }
-    return '';
-  }
-
-  Color getHighlightColor(Datum match) {
-    if (match.events.goals.isNotEmpty) return Colors.green;
-    if (match.events.redCards.isNotEmpty) return Colors.red;
-    return Colors.white70;
-  }
-
-  IconData getHighlightIcon(Datum match) {
-    if (match.events.goals.isNotEmpty) return Icons.sports_soccer;
-    if (match.events.redCards.isNotEmpty) return Icons.dangerous;
-    return Icons.circle;
+    
+    for (final redCard in match.events.redCards) {
+      eventWidgets.add(
+        Padding(
+          padding: const EdgeInsets.only(right: 8.0),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.dangerous, color: Colors.red, size: 12),
+              const SizedBox(width: 2),
+              Text(
+                "${redCard['minute']}' Red Card",
+                style: const TextStyle(color: Colors.red, fontSize: 11, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    
+    return eventWidgets;
   }
 
   bool isUpcoming(Datum match) {
@@ -225,6 +280,28 @@ class _MatchesScreenState extends State<MatchesScreen> {
     if (currentPage > 1) {
       setState(() {
         currentPage--;
+        isLoading = true;
+        fetchMatches();
+      });
+    }
+  }
+
+  void updateSeasonFilter(String? season) {
+    if (season != null) {
+      setState(() {
+        selectedSeason = season;
+        currentPage = 1;
+        isLoading = true;
+        fetchMatches();
+      });
+    }
+  }
+
+  void updateCompetitionFilter(String? competition) {
+    if (competition != null) {
+      setState(() {
+        selectedCompetition = competition;
+        currentPage = 1; // Reset to first page when filtering
         isLoading = true;
         fetchMatches();
       });
@@ -274,25 +351,55 @@ class _MatchesScreenState extends State<MatchesScreen> {
                 ),
                 Row(
                   children: [
-                    OutlinedButton(
-                      onPressed: () {},
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Colors.white70),
+                    // Season Dropdown
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.white70),
+                        borderRadius: BorderRadius.circular(4),
                       ),
-                      child: const Text(
-                        'Season ▼',
-                        style: TextStyle(color: Colors.white70),
+                      child: DropdownButton<String>(
+                        value: selectedSeason,
+                        dropdownColor: Colors.grey[900],
+                        underline: const SizedBox(),
+                        icon: const Icon(Icons.arrow_drop_down, color: Colors.white70, size: 16),
+                        style: const TextStyle(color: Colors.white, fontSize: 12),
+                        items: availableSeasons.map((season) {
+                          return DropdownMenuItem<String>(
+                            value: season,
+                            child: Text(season),
+                          );
+                        }).toList(),
+                        onChanged: updateSeasonFilter,
                       ),
                     ),
                     const SizedBox(width: 8),
-                    OutlinedButton(
-                      onPressed: () {},
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Colors.white70),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.white70),
+                        borderRadius: BorderRadius.circular(4),
                       ),
-                      child: const Text(
-                        'Competition ▼',
-                        style: TextStyle(color: Colors.white70),
+                      child: DropdownButton<String>(
+                        value: selectedCompetition,
+                        dropdownColor: Colors.grey[900],
+                        underline: const SizedBox(),
+                        icon: const Icon(Icons.arrow_drop_down, color: Colors.white70, size: 16),
+                        style: const TextStyle(color: Colors.white, fontSize: 12),
+                        items: availableCompetitions.map((competition) {
+                          return DropdownMenuItem<String>(
+                            value: competition,
+                            child: SizedBox(
+                              width: 100,
+                              child: Text(
+                                competition,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontSize: 11),
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: updateCompetitionFilter,
                       ),
                     ),
                   ],
@@ -306,17 +413,9 @@ class _MatchesScreenState extends State<MatchesScreen> {
               itemCount: matchesData!.data.length,
               itemBuilder: (context, index) {
                 final match = matchesData!.data[index];
-                final highlight = getHighlight(match);
                 
                 return InkWell(
                   onTap: () {
-                    // You can navigate to match details here
-                    // Navigator.push(
-                    //   context,
-                    //   MaterialPageRoute(
-                    //     builder: (_) => MatchDetailsScreen(match: match),
-                    //   ),
-                    // );
                   },
                   child: Card(
                     color: Colors.black,
@@ -369,25 +468,12 @@ class _MatchesScreenState extends State<MatchesScreen> {
                               ),
                             ],
                           ),
-                          if (highlight.isNotEmpty) ...[
-                            const SizedBox(height: 4),
-                            Row(
-                              children: [
-                                Icon(
-                                  getHighlightIcon(match),
-                                  color: getHighlightColor(match),
-                                  size: 12,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  highlight,
-                                  style: TextStyle(
-                                    color: getHighlightColor(match),
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
+                          if (match.events.goals.isNotEmpty || match.events.redCards.isNotEmpty) ...[
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 4,
+                              children: buildAllEvents(match),
                             ),
                           ],
                         ],
@@ -398,33 +484,81 @@ class _MatchesScreenState extends State<MatchesScreen> {
               },
             ),
           ),
-          // Pagination controls
           if (matchesData != null) ...[
             Container(
               color: Colors.black,
               padding: const EdgeInsets.all(16.0),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  ElevatedButton(
-                    onPressed: currentPage > 1 ? loadPreviousPage : null,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white12,
-                      disabledBackgroundColor: Colors.white12.withOpacity(0.3),
+                  // Previous button
+                  GestureDetector(
+                    onTap: currentPage > 1 ? loadPreviousPage : null,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: currentPage > 1 ? Colors.white12 : Colors.white12.withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.arrow_back_ios,
+                            size: 14,
+                            color: currentPage > 1 ? Colors.white : Colors.white54,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Previous',
+                            style: TextStyle(
+                              color: currentPage > 1 ? Colors.white : Colors.white54,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    child: const Text('Previous', style: TextStyle(color: Colors.white)),
                   ),
-                  Text(
-                    'Page $currentPage',
-                    style: const TextStyle(color: Colors.white),
-                  ),
-                  ElevatedButton(
-                    onPressed: matchesData!.data.length == limit ? loadNextPage : null,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white12,
-                      disabledBackgroundColor: Colors.white12.withOpacity(0.3),
+                  const SizedBox(width: 20),
+                  // Page indicator
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white24,
+                      borderRadius: BorderRadius.circular(20),
                     ),
-                    child: const Text('Next', style: TextStyle(color: Colors.white)),
+                    child: Text(
+                      'Page $currentPage',
+                      style: const TextStyle(color: Colors.white, fontSize: 12),
+                    ),
+                  ),
+                  const SizedBox(width: 20),
+                  GestureDetector(
+                    onTap: matchesData!.data.length == limit ? loadNextPage : null,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: matchesData!.data.length == limit ? Colors.white12 : Colors.white12.withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        children: [
+                          Text(
+                            'Next',
+                            style: TextStyle(
+                              color: matchesData!.data.length == limit ? Colors.white : Colors.white54,
+                              fontSize: 12,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Icon(
+                            Icons.arrow_forward_ios,
+                            size: 14,
+                            color: matchesData!.data.length == limit ? Colors.white : Colors.white54,
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ],
               ),
