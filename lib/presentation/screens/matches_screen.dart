@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:maule_fan_app/presentation/screens/match_details_screen.dart';
 
-// Models for the new competitions endpoint
 Competitions competitionsFromJson(String str) =>
     Competitions.fromJson(json.decode(str));
 String competitionsToJson(Competitions data) => json.encode(data.toJson());
@@ -43,7 +43,6 @@ class Datum {
   };
 }
 
-// Existing matches models
 class Matches {
   final int page;
   final int limit;
@@ -187,7 +186,6 @@ class _MatchesScreenState extends State<MatchesScreen> {
   int currentPage = 1;
   final int limit = 10;
 
-  // Available competitions from API
   List<Datum> availableCompetitions = [];
   int? selectedCompetitionId;
   String? selectedSeason;
@@ -465,7 +463,14 @@ class _MatchesScreenState extends State<MatchesScreen> {
                     itemBuilder: (context, index) {
                       final match = matchesData!.data[index];
                       return InkWell(
-                        onTap: () {},
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => MatchDetailsScreen(
+                              matchId: match.id,
+                            ),
+                          ),
+                        ),
                         child: Card(
                           color: Colors.black,
                           margin: const EdgeInsets.only(bottom: 8.0),
